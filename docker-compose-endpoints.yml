@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  traefik:
+    image: traefik:v2.5
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  backend1:
+    image: nginx:alpine
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend1.rule=Host(`backend1.localhost`)"
+      - "traefik.http.routers.backend1.entrypoints=web"
+      - "traefik.http.services.backend1.loadbalancer.server.port=80"
+      - "traefik.http.middlewares.backend1-redirect.redirectscheme.scheme=https"
+    volumes:
+      - ./index.html:/usr/share/nginx/html/index.html
+  backend2:
+    image: httpd:alpine
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend2.rule=Host(`backend1.localhost`) && Path(`/backend2`)"
+      - "traefik.http.routers.backend2.entrypoints=web"
+      - "traefik.http.services.backend2.loadbalancer.server.port=80"
+      - "traefik.http.routers.backend2.middlewares=backend2-prefix"
+      - "traefik.http.middlewares.backend2-prefix.stripprefix.prefixes=/backend2"
+    volumes:
+      - ./index2.html:/usr/local/apache2/htdocs/index.html
