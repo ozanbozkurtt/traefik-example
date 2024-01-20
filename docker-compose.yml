@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  traefik:
+    image: traefik:v2.5
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"  # Define the web entrypoint
+      - "--entrypoints.websecure.address=:443"  # Define the websecure entrypoint
+        ##  configuration for certificate and dns ##
+        #- --certificatesresolvers.myresolver.acme.dnschallenge=true
+        #- --certificatesresolvers.myresolver.acme.dnschallenge.provider=namecheap
+        #- --certificatesresolvers.myresolver.acme.caserver=https://acme-v02.api.letsencrypt.org/directory
+        #- --certificatesresolvers.myresolver.acme.email=xxxxxxxx
+        #- --certificatesresolvers.myresolver.acme.storage=/acme.json
+        #- --certificatesresolvers.myresolver.acme.dnschallenge.resolvers=8.8.8.8:53
+        #- --certificatesresolvers.myresolver.acme.dnschallenge.delayBeforeCheck=5
+
+        ## Namecheap env ##
+        #environment:
+        #- "NAMECHEAP_API_USER=xxxxxxxxxxxxxxxxx"
+        #- "NAMECHEAP_API_KEY=xxxxxxxxxxxxxxxxxx"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+        ## configuration for certificate and dns ##
+        #- /opt/traefik/acme.json:/acme.json
+
+  backend1:
+    image: nginx:alpine
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend1.rule=Host(`backend1.localhost`)"
+      - "traefik.http.routers.backend1.entrypoints=web"
+      - "traefik.http.services.backend1.loadbalancer.server.port=80" # backend container port
+      - "traefik.http.middlewares.backend1-redirect.redirectscheme.scheme=http"
+    volumes:
+      - ./index.html:/usr/share/nginx/html/index.html
+  backend2:
+    image: httpd:alpine
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend2.rule=Host(`backend2.localhost`)"
+      - "traefik.http.routers.backend2.entrypoints=web"
+      - "traefik.http.services.backend2.loadbalancer.server.port=80" # backend container port
+      - "traefik.http.middlewares.backend1-redirect.redirectscheme.scheme=http"
+    volumes:
+      - ./index2.html:/usr/local/apache2/htdocs/index.html
+
